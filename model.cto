@@ -1,0 +1,294 @@
+namespace org.logistics.testnet
+
+/**
+ * The type of perishable product being shipped
+ */
+enum ProductType {
+  o FOOD
+	o MEDICINE
+	o MACHINES
+	o OTHER
+}
+
+enum ItemStatus {
+  o GOOD
+  o DAMAGED
+  o CRITICAL
+  o LOST
+}
+/**
+ * Transformation types for a product
+ */
+enum TransformationType{
+	o JOIN
+	o SPLIT
+  o UPGRADE
+	//o DELETE
+}
+
+/**
+ * The status of a shipment
+ */
+enum ShipmentStatus {
+  o WAITING
+  o PACKING
+  o DISPATCHING
+  o SHIPPED_IN_TRANSIT
+  o CANCELED
+  o DELIVERED
+  o LOST
+}
+
+
+/**
+ * An abstract transaction that is related to a Shipment
+ */
+abstract transaction ShipmentTransaction {
+  --> ShipmentBatch shipment
+  
+}
+
+/**
+ * An temperature reading for a shipment. E.g. received from a
+ * device within a temperature controlled shipping container
+ */
+transaction TemperatureReading extends ShipmentTransaction {
+  o Double centigrade
+}
+
+
+/**
+ * We want to create a shipment and contract that are linked, but SEPARATE assets, so that they can have separate permissions. If they were all 1 asset it would not be possible, and even creating 2 assets with 2 different transactions, it is sometimes hard to link the shipment and contract manually; So, when creating a shipment, we automatically create the corresponding contract;
+ */
+transaction CreateShipmentAndContract {
+  /*
+  * Shipment parameters
+  */
+  o String shipmentId
+  o String trackingNumber
+  o String message
+  o ShipmentStatus status default = 'WAITING'
+  o Location location
+  --> SupplyChainMember owner 
+  //--> SupplyChainMember holder //IN POSSESSION OF ... initially the owner
+  // --> OrderContract contract
+  --> Commodity[] assetExchanged
+ /*
+  * Contract parameters
+  */
+  o String orderId
+  --> SupplyChainMember buyer
+  o Location expectedArrivalLocation
+  o Boolean payOnArrival
+  o DateTime arrivalDateTime
+  o Double paymentPrice
+}
+
+
+/**
+ * Transfer holdership of assets to another person and update the status of the shipment
+ */
+transaction UpdateShipment extends ShipmentTransaction {
+  o ShipmentStatus status
+  o Location newLocation
+  o String message
+  --> SupplyChainMember newHolder optional
+}
+
+// transfer possession to another person; final owner stays the same; check final owner
+transaction TransferCommodityPossession {
+  --> Commodity commodity
+  --> SupplyChainMember newOwner
+}
+
+
+transaction ReportDamagedGood {
+  --> Commodity damagedGood
+  o DateTime dateOccurred
+  o DateTime dateReported
+  o String occurrenceDescription
+  o String itemConditionDescription
+  o ItemStatus itemStatus
+
+}
+
+/**
+* Deletes the input commodities and creates the new output commodities
+*/
+transaction TransformCommodities {
+  --> Commodity[] commoditiesToBeConsumed
+  o Commodity[] commoditiesToBeCreated
+}
+
+/**
+ * Updates a commodity's details, excluding owner and GTIN
+ */
+transaction UpdateCommodity {
+  --> Commodity commodityToUpdate
+  o ProductType type
+  o String name
+  o String description
+  o ItemCondition itemCondition
+}
+
+/**
+ * Updates a commodity's details, excluding owner and GTIN
+ */
+transaction DeleteCommodity {
+  --> Commodity commodityToDelete
+}
+
+
+/**
+transaction RevertTransformation {
+  o Commodity[] commoditiesToRestore
+  --> Commodity[] commoditiesToDelete
+  //or should it be || o String transactionID 
+}
+*/
+
+asset Commodity identified by GTIN {
+  o ProductType type
+  o String GTIN
+  o String name
+  o String description
+  o ItemCondition itemCondition
+  --> SupplyChainMember owner
+}
+
+/**
+ * A shipment being tracked as an asset on the ledger
+ */
+asset ShipmentBatch identified by shipmentId {
+  o String shipmentId
+  o String trackingNumber
+  o String message optional
+  o ShipmentStatus status
+  o Location location
+  o TemperatureReading[] temperatureReadings optional
+  --> SupplyChainMember owner
+  --> SupplyChainMember holder //IN POSSESSION OF ...
+  --> OrderContract contract
+  --> Commodity[] assetExchanged
+}
+
+
+/** Only to be used in case of Shipment=transportation of various batches from one destination to another; At the moment, shipment= end-to-end transport of a batch of items to its owner; so, this is more designed with the final customer in perspective
+
+asset Batch identified by batchId {
+  o String batchId
+  --> Commodity[] batchCommodities
+}
+*/
+
+
+/**
+ * Defines a contract between 2 entities, for a order/shipment
+ */
+asset OrderContract identified by orderId {
+  o String orderId
+  --> SupplyChainMember buyer
+  --> SupplyChainMember seller
+  o Location expectedArrivalLocation
+  o Boolean payOnArrival
+  o DateTime arrivalDateTime
+  o Double paymentPrice
+}
+
+concept ItemCondition {
+  o String conditionDescription
+  o ItemStatus status
+}
+
+/**
+ * A concept for a simple street address
+ */
+concept Address {
+  o String city optional
+  o String country
+  o String street optional
+  o String zip optional
+}
+
+concept Location {
+  o String globalLN // global location number
+  o Address address
+}
+
+
+/**
+ * An abstract participant type in this business network
+ */
+abstract participant SupplyChainMember identified by gs1CompanyPrefix {
+  o String gs1CompanyPrefix
+  o String email
+  o Address address
+  o Double accountBalance
+  //--> Commodity[] assets //not used at the moment
+}
+
+participant Supplier extends SupplyChainMember {
+
+}
+
+participant Manufacturer extends SupplyChainMember {
+
+}
+
+participant Distributor extends SupplyChainMember {
+
+}
+
+participant Retailer extends SupplyChainMember {
+
+}
+
+participant Customer extends SupplyChainMember {
+
+}
+
+/**
+ * TODO: add an auditor participant role
+ */
+
+participant Auditor identified by auditorCompany{
+  o String auditorCompany
+  o String email
+  o Address address
+}
+
+/**
+ * JUST FOR INITIALIZING A DEMO
+ */
+transaction SetupDemo {
+}
+
+transaction TestTransaction{
+--> ShipmentBatch shipment
+--> Commodity commodity
+}
+
+event TestEvent{
+  o String eventString
+}
+
+event changeOwnershipEvent{
+--> Commodity commodity
+--> SupplyChainMember newOwner
+--> SupplyChainMember oldOwner
+}
+
+event detectLocationFraud{
+o Location newLocation
+o Location expectedArrivalLocation
+--> ShipmentBatch shipment
+}
+
+event CommodityTransformation{
+  --> Commodity[] oldCommodities
+  --> Commodity[] newCommodities
+}
+
+event ShipmentUpdate  {
+  --> ShipmentBatch shipment
+}
