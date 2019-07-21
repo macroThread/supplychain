@@ -1,6 +1,10 @@
 **Note Delete all the assets and participarts before starting the testing, also delete all the existing code in script.js, queries.qry files and use the latest code**
-queries.qry -> https://github.com/ovaiskale/supplychain/blob/master/original/queries.qry
-script.js ->  https://github.com/ovaiskale/supplychain/blob/master/original/script.js
+queries.qry -> https://github.com/macroThread/supplychain/blob/master/queries.qry
+<br />
+script.js ->  https://github.com/macroThread/supplychain/blob/master/script.js
+<br />
+mode.cto -> https://github.com/macroThread/supplychain/blob/master/model.cto
+<br />
 
 Note: Most of the inputs are actually filled in by default by the playground UI. <br /> <br /> 
 Steps, imagine we are procuring wheat, manufacturing maggi, sending it to distributor: <br /><br />
